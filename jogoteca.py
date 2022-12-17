@@ -18,6 +18,7 @@ app.secret_key = 'Alohomora'
 
 @app.route('/')
 def index():
+    #render_template renderiza a página
     return render_template('lista.html', titulo='Jogos', jogos=lista)
 
 @app.route('/novo')
@@ -34,6 +35,7 @@ def criar():
     jogo = Jogo(nome, categoria, console)
     lista.append(jogo) #adiciona item a lista
 
+    #redirect redireciona para outra página, a rota criar não aparece no navegador
     return redirect('/')
 
 @app.route('/login')
@@ -53,5 +55,13 @@ def autenticar():
     else:
         flash('Usuário não logado.')
         return redirect('/login')
+
+@app.route('/logout')
+def logout():
+    #retirando dados do navegador
+    session['usuario_logado'] = None
+
+    flash('Logout efetuado com sucessso!')
+    return redirect('/')
 
 app.run(debug=True)
