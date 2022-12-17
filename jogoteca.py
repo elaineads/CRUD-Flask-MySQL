@@ -1,37 +1,47 @@
 from flask import Flask, render_template, request, redirect, session, flash, url_for
-
-class Jogo:
-    def __init__(self, nome, categoria, console):
-        self.nome = nome
-        self.categoria = categoria
-        self.console = console
-
-jogo1 = Jogo('Tetrs', 'Puzze', 'Atari')
-jogo2 = Jogo('God of War', 'Rack n Slash', 'PS2')
-jogo3 = Jogo('Mortal Kombate', 'Luta', 'PS2')
-
-lista = [jogo1, jogo2, jogo3]
-
-class Usuario:
-    def __init__(self, nome, nickname, senha):
-        self.nome = nome
-        self.nickname = nickname
-        self.senha = senha
-
-usuario1 = Usuario('Elaine', 'elaineads', '123')
-usuario2 = Usuario('Lua', 'luazinha', '1234')
-usuario3 = Usuario('Bellatrix', 'bella', '12345')
-
-usuarios = {usuario1.nickname: usuario1,
-            usuario2.nickname: usuario2,
-            usuario3.nickname: usuario3,}
+#SQLAlchemy conecta banco de dados com a aplicação
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 #camada de criptografia para as informações guardadas nos cookies
 app.secret_key = 'Alohomora'
 
+#configuração banco de dados
+app.config['SQLALCHEMY_DATABASE_URI'] = \
+    '{SGBD}://{usuario}:{senha}@{servidor}/{database}'.format(
+        SGBD = 'mysql+mysqlconnector',
+        usuario = 'root',
+        senha = 'root',
+        servidor = 'localhost',
+        database = 'jogoteca'
+    )
+
+db = SQLAlchemy(app)
+
+#conexão SQLAlquemy e banco de dados
+class Jogos(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String(50), nullable=False)
+    categoria = db.Column(db.String(40), nullable=False)
+    console = db.Column(db.String(20), nullable=False)
+
+    #boas práticas
+    #__repr__ representa os objetos da classe como uma string, normalmente usado para depuração
+    def __repr__(self):
+        return 'Name %r' %self.name
+
+class Usuarios(db.Model):
+    nickname = db.Column(db.String(8), primary_key=True)
+    nome = db.Column(db.String(20), nullable=False)
+    senha = db.Column(db.String(100), nullable=False)
+
+    def __repr__(self):
+        return 'Name %r' %self.name
+
 @app.route('/')
 def index():
+    #query faz uma consulta no banco de dados
+    lista = Jogos.query.order_by(Jogos.id)
     #render_template renderiza a página
     return render_template('lista.html', titulo='Jogos', jogos=lista)
 
@@ -51,8 +61,15 @@ def criar():
     categoria = request.form['categoria']
     console = request.form['console']
 
-    jogo = Jogo(nome, categoria, console)
-    lista.append(jogo) #adiciona item a lista
+    jogo = Jogos.query.filter_by(nome=nome).first()
+    if jogo:
+        flash('Jogo já existe!')
+        return redirect(url_for('index'))
+
+    #adicionando novo jogo
+    novo_jogo = Jogos(nome=nome, categoria=categoria, console=console)
+    db.session.add(novo_jogo)
+    db.session.commit()
 
     #redirect redireciona para outra página, a rota criar não aparece no navegador
     return redirect(url_for('index'))
@@ -67,10 +84,10 @@ def login():
 #rota intermediária entre '/login' e '/novo'
 @app.route('/autenticar', methods=['POST',])
 def autenticar():
-    #se o nome de usuário estiver na lista de usuários
-    if request.form['usuario'] in usuarios:
-        #chave do dicionário para o usuário
-        usuario = usuarios[request.form['usuario']]
+    #se o nickname estiver na tabela de usuários
+    #first retorna a primeira ocorrência
+    usuario = Usuarios.query.filter_by(nickname=request.form['usuario']).first()
+    if usuario:
         #verificando se a senha está correta
         if request.form['senha'] == usuario.senha:
             #guardando o nickname do usuário nos cookies do navegador
