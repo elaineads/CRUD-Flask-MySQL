@@ -38,6 +38,20 @@ def criar():
     #redirect redireciona para outra página, a rota criar não aparece no navegador
     return redirect(url_for('index'))
 
+#<int:id> pega o item correto para editar
+@app.route('/editar/<int:id>')
+def editar(id):
+    if 'usuario_logado' not in session or session['usuario_logado'] == None:
+        return redirect(url_for('login', proxima=url_for('novo')))
+    
+    jogo = Jogos.query.filter_by(id=id).first()
+    return render_template('editar.html', titulo='Editar Jogo', jogo=jogo)
+
+#rota intermediária entre '/' e '/editar'
+@app.route('/atualizar', methods=['POST',])
+def atualizar():
+    pass
+
 @app.route('/login')
 def login():
     #capturando as informações da variável próxima
